@@ -1,22 +1,59 @@
 package org.github.clio
 
-class Clio(val args: Array[String]) {
+case class KeyValue(seperator: String = "")
+
+class Clio(
+  val args: Array[String], 
+  val kv: KeyValue = KeyValue(seperator = "=")) {
+        
+  private val clio = this
   var values = List[Value]()
+  
   def o = Opt
-    
+  
+  def ov(name: String, 
+         longName: String = "", 
+         description: String = "", 
+         required: Boolean = false, 
+         kv: KeyValue = kv, 
+         flag: Boolean = false, 
+         parent: Option[Opt] = None) = 
+    Opt(name = name, longName = longName, description = description, optional = !required, kv = kv, flag = flag, parent = parent)
+  
   def f(name: String) = Opt(name, flag = true)
   
-  sealed trait Value {
-    println(values)
+  def parse : this.type = {
+    args.foreach(println)
+    this
   }
+  sealed trait Value
   
-  case class OptValue[T](o: Opt, multiValue: Boolean = false)(implicit converter: conversions.Converter[T]) extends Value {
+  case class OptValue[T]
+    (o: Opt, multiValue: Boolean = false)
+    (implicit converter: conversions.Converter[T]) extends Value {
+      
     values = values.filterNot(_ == o)
     values ::= this
+    
+    def value : T = {
+      println(o.kv)
+      o.context.values.foreach(println)
+      null.asInstanceOf[T]
+    }
   }
   
-  case class Opt(name: String, longName: String = "", description: String = "", required: Boolean = false, flag: Boolean = false, parent: Option[Opt] = None) extends Value {
-    values ::= this
+  case class Opt(
+    name: String, 
+    longName: String = "",
+    description: String = "", 
+    optional: Boolean = true, 
+    kv: KeyValue = kv, 
+    flag: Boolean = false, 
+    parent: Option[Opt] = None, 
+    context: Clio = clio) extends Value {
+    
+    values ::= this      
+    
     def as[T](implicit converter: conversions.Converter[T]) = 
       OptValue[T](this)(converter)
 
@@ -25,10 +62,23 @@ class Clio(val args: Array[String]) {
     def asList[T](implicit converter: conversions.Converter[T]) = 
         OptValue[T](this, multiValue = true)(converter)
 
-    def apply(name: String, longName: String = "", required: Boolean = false, description: String = "", flag: Boolean = false) = 
-      new Opt(name = name, longName = longName, description = description, required = required, flag = flag, parent = Some(this))  
+    def apply(name: String, 
+              longName: String = "", 
+              required: Boolean = false, 
+              description: String = "", 
+              flag: Boolean = false) = 
+      new Opt(name = name, longName = longName, description = description, optional = !required, flag = flag, parent = Some(this))  
+      
+    def required = {
+      copy(optional = false)
+    }
+    
+    def value : String = {
+      ""
+    }
   }  
 }
+
 
 object conversions {  
   abstract class Converter[T] {

@@ -6,14 +6,20 @@ import org.scalatest.matchers.ShouldMatchers
 class ClioSpec extends FlatSpec with ShouldMatchers {
   
   it should "support having the key and value in the same arg" in {
-    pending
     val args = Array("--block-size=10")
     val clio = new Clio(args) {
-      val blockSize = o("--block-size").as[Int]
-    }
-    clio.blockSize should be (10)    
+      val blockSize = ov("--block-size").as[Int]
+    }.parse
+    clio.blockSize.value should be (10)    
   }
   
+  it should "copy" in {
+    val args = Array("--block-size=10")
+    val clio = new Clio(args) {
+      val server = ov("--server").required
+    }
+    clio.server.value should be (123)
+  }
   it should "should set a property when the value follows the designator" in {
     pending
     val args = Array( "-buildfile", "mybuild.xml", "-Dproperty=value", "-Dproperty1=value1", "-projecthelp")
@@ -28,7 +34,7 @@ class ClioSpec extends FlatSpec with ShouldMatchers {
     pending
     val args = Array("-ddebug")
     val clio = new Clio(args) {
-      val debugFlag = o("-d")
+      val debugFlag = o("-d")("debug")
     }      
     clio.debugFlag should be ("debug")
   }
